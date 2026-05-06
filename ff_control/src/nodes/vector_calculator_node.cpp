@@ -9,11 +9,11 @@ public:
     VectorCalculator() : Node("vector_calculator")
     {
         robot1_sub_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
-            "/robot1/pose", 10,
+            "/vrpn_mocap/robot/pose", 10,
             std::bind(&VectorCalculator::robot1_callback, this, std::placeholders::_1));
         
         robot2_sub_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
-            "/robot2/pose", 10,
+            "/vrpn_mocap/robot2/pose", 10,
             std::bind(&VectorCalculator::robot2_callback, this, std::placeholders::_1));
         
         vector_pub_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>(
