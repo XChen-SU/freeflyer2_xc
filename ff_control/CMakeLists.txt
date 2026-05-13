@@ -61,12 +61,18 @@ ament_target_dependencies(pd_ctrl_cpp_node geometry_msgs)
 add_executable(key_teleop_cpp_node src/nodes/key_teleop_node.cpp)
 target_link_libraries(key_teleop_cpp_node ctrl_lib)
 
-add_executable(relative_pos_node src/nodes/relative_pos_node.cpp)
+add_executable(relative_pos_cpp_node src/nodes/relative_pos_node.cpp)
 ament_target_dependencies(relative_pos_node rclcpp geometry_msgs)
+
+add_executable(tether_ctrl_cpp_node src/nodes/tether_ctrl_node.cpp)
+target_link_libraries(tether_ctrl_node ctrl_lib)
+ament_target_dependencies(tether_ctrl_node geometry_msgs)
 
 
 # install CPP nodes
-install(TARGETS pwm_ctrl_cpp_node wrench_ctrl_cpp_node pd_ctrl_cpp_node key_teleop_cpp_node relative_pos_node
+install(TARGETS pwm_ctrl_cpp_node wrench_ctrl_cpp_node pd_ctrl_cpp_node key_teleop_cpp_node 
+  relative_pos_cpp_node 
+  tether_ctrl_cpp_node
   DESTINATION lib/${PROJECT_NAME})
 
 # install Python libraries
