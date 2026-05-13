@@ -7,22 +7,11 @@ class RelativePositionPrinter : public rclcpp::Node
 public:
     RelativePositionPrinter() : Node("relative_pos_node")
     {
-        // robot1_sub_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
-        //     "/robot/pose", 10,
-        //     std::bind(&RelativePositionPrinter::robot1_callback, this, std::placeholders::_1));
-
-        // robot2_sub_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
-        //     "/robot2/pose", 10,
-        //     std::bind(&RelativePositionPrinter::robot2_callback, this, std::placeholders::_1));
-        
-        // RCLCPP_INFO(this->get_logger(), "Relative Position Printer Node Started");
-
-
-
         // Create QoS profile with BEST_EFFORT
         auto qos = rclcpp::QoS(rclcpp::KeepLast(10));
         qos.reliability(rclcpp::ReliabilityPolicy::BestEffort);
         
+        // Subscribe robot poses
         robot1_sub_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
             "/robot/pose", qos,  // <-- Use qos here
             std::bind(&RelativePositionPrinter::robot1_callback, this, std::placeholders::_1));
@@ -31,6 +20,9 @@ public:
             "/robot2/pose", qos,  // <-- Use qos here
             std::bind(&RelativePositionPrinter::robot2_callback, this, std::placeholders::_1));
         
+        // Publish relative position vector
+        relative_pos_pub_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>( "/relative_position", 10);
+
         RCLCPP_INFO(this->get_logger(), "Relative Position Printer Node Started");
     }
 
@@ -56,29 +48,28 @@ private:
             double dx = robot2_pos_.x - robot1_pos_.x;
             double dy = robot2_pos_.y - robot1_pos_.y;
             double dz = robot2_pos_.z - robot1_pos_.z;
-
             double distance = std::sqrt(dx*dx + dy*dy + dz*dz);
 
-            RCLCPP_INFO(this->get_logger(), 
-                "Robot1 position: [%.3f, %.3f, %.3f]",
-                robot1_pos_.x, robot1_pos_.y, robot1_pos_.z);
+            // Publish relative pos msg
+            geometry_msgs::msg::Vector3Stamped rel_pos_msg;
+            rel_pos_msg.header.stamp = this->now();
+            rel_pos_msg.header.frame_id = "world";
+            rel_pos_msg.vector.x = dx;
+            rel_pos_msg.vector.y = dy;
+            rel_pos_msg.vector.z = dz;
             
+            relative_pos_pub_->publish(rel_pos_msg);
+
+            // Print to terminal
             RCLCPP_INFO(this->get_logger(), 
-                "Robot2 position: [%.3f, %.3f, %.3f]",
-                robot2_pos_.x, robot2_pos_.y, robot2_pos_.z);
-            
-            RCLCPP_INFO(this->get_logger(), 
-                "Relative position (robot2 - robot1): [%.3f, %.3f, %.3f]",
-                dx, dy, dz);
-            
-            RCLCPP_INFO(this->get_logger(), 
-                "Distance between robots: %.3f meters\n",
-                distance);
+                "Relative pos: [%.3f, %.3f, %.3f] | Distance: %.3f m",
+                dx, dy, dz, distance);
         }
     }
     
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr robot1_sub_;
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr robot2_sub_;
+    rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr relative_pos_pub_;
     
     geometry_msgs::msg::Point robot1_pos_;
     geometry_msgs::msg::Point robot2_pos_;
