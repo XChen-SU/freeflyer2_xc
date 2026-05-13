@@ -7,12 +7,28 @@ class RelativePositionPrinter : public rclcpp::Node
 public:
     RelativePositionPrinter() : Node("relative_pos_node")
     {
+        // robot1_sub_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
+        //     "/robot/pose", 10,
+        //     std::bind(&RelativePositionPrinter::robot1_callback, this, std::placeholders::_1));
+
+        // robot2_sub_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
+        //     "/robot2/pose", 10,
+        //     std::bind(&RelativePositionPrinter::robot2_callback, this, std::placeholders::_1));
+        
+        // RCLCPP_INFO(this->get_logger(), "Relative Position Printer Node Started");
+
+
+
+        // Create QoS profile with BEST_EFFORT
+        auto qos = rclcpp::QoS(rclcpp::KeepLast(10));
+        qos.reliability(rclcpp::ReliabilityPolicy::BestEffort);
+        
         robot1_sub_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
-            "/vrpn_mocap/robot/pose", 10,
+            "/robot/pose", qos,  // <-- Use qos here
             std::bind(&RelativePositionPrinter::robot1_callback, this, std::placeholders::_1));
 
         robot2_sub_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
-            "/vrpn_mocap/robot2/pose", 10,
+            "/robot2/pose", qos,  // <-- Use qos here
             std::bind(&RelativePositionPrinter::robot2_callback, this, std::placeholders::_1));
         
         RCLCPP_INFO(this->get_logger(), "Relative Position Printer Node Started");
