@@ -1,5 +1,6 @@
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
+#include <geometry_msgs/msg/point_stamped.hpp>
 #include <cmath>
 
 class RelativePositionPrinter : public rclcpp::Node
@@ -21,7 +22,7 @@ public:
             std::bind(&RelativePositionPrinter::robot2_callback, this, std::placeholders::_1));
         
         // Publish relative position vector
-        relative_pos_pub_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>( "/relative_position", 10);
+        relative_pos_pub_ = this->create_publisher<geometry_msgs::msg::PointStamped>( "/relative_position", 10);
 
         RCLCPP_INFO(this->get_logger(), "Relative Position Printer Node Started");
     }
@@ -51,12 +52,12 @@ private:
             double distance = std::sqrt(dx*dx + dy*dy + dz*dz);
 
             // Publish relative pos msg
-            geometry_msgs::msg::Vector3Stamped rel_pos_msg;
+            geometry_msgs::msg::PointStamped rel_pos_msg;
             rel_pos_msg.header.stamp = this->now();
             rel_pos_msg.header.frame_id = "world";
-            rel_pos_msg.vector.x = dx;
-            rel_pos_msg.vector.y = dy;
-            rel_pos_msg.vector.z = dz;
+            rel_pos_msg.point.x = dx;
+            rel_pos_msg.point.y = dy;
+            rel_pos_msg.point.z = dz;
             
             relative_pos_pub_->publish(rel_pos_msg);
 
@@ -69,7 +70,7 @@ private:
     
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr robot1_sub_;
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr robot2_sub_;
-    rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr relative_pos_pub_;
+    rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr relative_pos_pub_;
     
     geometry_msgs::msg::Point robot1_pos_;
     geometry_msgs::msg::Point robot2_pos_;

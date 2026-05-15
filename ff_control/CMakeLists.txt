@@ -62,11 +62,11 @@ add_executable(key_teleop_cpp_node src/nodes/key_teleop_node.cpp)
 target_link_libraries(key_teleop_cpp_node ctrl_lib)
 
 add_executable(relative_pos_cpp_node src/nodes/relative_pos_node.cpp)
-ament_target_dependencies(relative_pos_node rclcpp geometry_msgs)
+ament_target_dependencies(relative_pos_cpp_node rclcpp geometry_msgs)
 
 add_executable(tether_ctrl_cpp_node src/nodes/tether_ctrl_node.cpp)
-target_link_libraries(tether_ctrl_node ctrl_lib)
-ament_target_dependencies(tether_ctrl_node geometry_msgs)
+target_link_libraries(tether_ctrl_cpp_node ctrl_lib)
+ament_target_dependencies(tether_ctrl_cpp_node geometry_msgs)
 
 
 # install CPP nodes

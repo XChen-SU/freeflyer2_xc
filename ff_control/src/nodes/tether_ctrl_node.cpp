@@ -3,22 +3,21 @@
 #include <memory>
 
 #include <rclcpp/rclcpp.hpp>
-#include <geometry_msgs/msg/vector3_stamped.hpp>
+#include <geometry_msgs/msg/point_stamped.hpp>
 
 #include "ff_msgs/msg/free_flyer_state.hpp"
 #include "ff_control/linear_ctrl.hpp"
 
 using namespace std::chrono_literals;
 
-class TetherControlNode : public ff::LinearController
+class TetherControlNode : public rclcpp::Node
 {
 public:
   TetherControlNode()
-  : rclcpp::Node("tether_ctrl_node"),
-    ff::LinearController()
+  : rclcpp::Node("tether_ctrl_node")
   {
     // 订阅相对位置
-    rel_pos_sub_ = this->create_subscription<geometry_msgs::msg::Vector3Stamped>(
+    rel_pos_sub_ = this->create_subscription<geometry_msgs::msg::PointStamped>(
         "/relative_position", 10,
         std::bind(&TetherControlNode::relative_pos_callback, this, std::placeholders::_1));
     
@@ -42,18 +41,18 @@ public:
   }
 
 private:
-  rclcpp::Subscription<geometry_msgs::msg::Vector3Stamped>::SharedPtr rel_pos_sub_;
+  rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr rel_pos_sub_;
   rclcpp::TimerBase::SharedPtr control_timer_;
   
-  geometry_msgs::msg::Vector3 relative_pos_;
+  geometry_msgs::msg::Point relative_pos_;
   bool rel_pos_received_ = false;
   
   FeedbackMat K_;
   double fixed_speed_;
   
-  void relative_pos_callback(const geometry_msgs::msg::Vector3Stamped::SharedPtr msg)
+  void relative_pos_callback(const geometry_msgs::msg::PointStamped::SharedPtr msg)
   {
-    relative_pos_ = msg->vector;
+    relative_pos_ = msg->point;
     rel_pos_received_ = true;
   }
   
