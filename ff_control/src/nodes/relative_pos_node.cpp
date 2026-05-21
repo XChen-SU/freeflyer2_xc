@@ -14,17 +14,18 @@ public:
         
         // Subscribe robot poses
         robot1_sub_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
-            "/robot/pose", qos,  // <-- Use qos here
+            "/robot/pose", qos,
             std::bind(&RelativePositionPrinter::robot1_callback, this, std::placeholders::_1));
 
         robot2_sub_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
-            "/robot2/pose", qos,  // <-- Use qos here
+            "/robot2/pose", qos,
             std::bind(&RelativePositionPrinter::robot2_callback, this, std::placeholders::_1));
         
-        // Publish relative position vector
-        relative_pos_pub_ = this->create_publisher<geometry_msgs::msg::PointStamped>( "/relative_position", 10);
+        // Publish relative position vector (2D only)
+        relative_pos_pub_ = this->create_publisher<geometry_msgs::msg::PointStamped>(
+            "/relative_position", 10);
 
-        RCLCPP_INFO(this->get_logger(), "Relative Position Printer Node Started");
+        RCLCPP_INFO(this->get_logger(), "Relative Position Printer Node Started (2D mode)");
     }
 
 private:
@@ -46,25 +47,25 @@ private:
     {
         if (robot1_received_ && robot2_received_)
         {
+            // Only calculate 2D relative position (ignore z)
             double dx = robot2_pos_.x - robot1_pos_.x;
             double dy = robot2_pos_.y - robot1_pos_.y;
-            double dz = robot2_pos_.z - robot1_pos_.z;
-            double distance = std::sqrt(dx*dx + dy*dy + dz*dz);
+            double distance_2d = std::sqrt(dx*dx + dy*dy);
 
-            // Publish relative pos msg
+            // Publish relative pos msg (z is set to 0)
             geometry_msgs::msg::PointStamped rel_pos_msg;
             rel_pos_msg.header.stamp = this->now();
             rel_pos_msg.header.frame_id = "world";
             rel_pos_msg.point.x = dx;
             rel_pos_msg.point.y = dy;
-            rel_pos_msg.point.z = dz;
+            rel_pos_msg.point.z = 0.0;  // Set z to 0 for 2D mode
             
             relative_pos_pub_->publish(rel_pos_msg);
 
-            // Print to terminal
+            // Print to terminal (2D only)
             RCLCPP_INFO(this->get_logger(), 
-                "Relative pos: [%.3f, %.3f, %.3f] | Distance: %.3f m",
-                dx, dy, dz, distance);
+                "Relative pos [2D]: [%.3f, %.3f] | Distance: %.3f m",
+                dx, dy, distance_2d);
         }
     }
     
