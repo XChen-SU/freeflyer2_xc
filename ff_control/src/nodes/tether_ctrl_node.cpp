@@ -222,6 +222,238 @@
 //
 // Copyright (c) 2024 Stanford Autonomous Systems Lab
 
+
+
+
+// #include "ff_control/tether_ctrl.hpp"
+// #include <chrono>
+// #include <cmath>
+// #include <algorithm>
+
+// using namespace std::chrono_literals;
+// using namespace std::placeholders;
+
+// namespace ff
+// {
+
+// TetherControlNode::TetherControlNode()
+// : Node("tether_ctrl_node")
+// {
+//     // Declare and get parameters
+//     declareParameters();
+    
+//     control_frequency_ = this->get_parameter("control_frequency").as_double();
+//     kp_x_ = this->get_parameter("kp_x").as_double();
+//     kp_y_ = this->get_parameter("kp_y").as_double();
+//     max_velocity_ = this->get_parameter("max_velocity").as_double();
+    
+//     // Create QoS profile with BEST_EFFORT (match mocap)
+//     auto qos = rclcpp::QoS(rclcpp::KeepLast(10));
+//     qos.reliability(rclcpp::ReliabilityPolicy::BestEffort);
+    
+//     // Subscribe to relative position
+//     relative_pos_sub_ = this->create_subscription<geometry_msgs::msg::PointStamped>(
+//         "/relative_position", 10,
+//         std::bind(&TetherControlNode::relativePositionCallback, this, _1));
+    
+//     // Subscribe to robot poses (both from mocap)
+//     robot1_pose_sub_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
+//         "/robot/pose", qos,
+//         std::bind(&TetherControlNode::robot1PoseCallback, this, _1));
+    
+//     robot2_pose_sub_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
+//         "/robot2/pose", qos,
+//         std::bind(&TetherControlNode::robot2PoseCallback, this, _1));
+    
+//     // Publish velocity commands
+//     cmd_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>(
+//         "/robot2/cmd_vel", 10);
+    
+//     // Create control timer
+//     auto period = std::chrono::duration<double>(1.0 / control_frequency_);
+//     control_timer_ = this->create_wall_timer(
+//         std::chrono::duration_cast<std::chrono::milliseconds>(period),
+//         std::bind(&TetherControlNode::controlTimerCallback, this));
+    
+//     RCLCPP_INFO(this->get_logger(), 
+//                 "========================================");
+//     RCLCPP_INFO(this->get_logger(), 
+//                 "Tether Control Node Started");
+//     RCLCPP_INFO(this->get_logger(), 
+//                 "  Control Rate: %.1f Hz", control_frequency_);
+//     RCLCPP_INFO(this->get_logger(), 
+//                 "  Gains: Kp_x=%.2f, Kp_y=%.2f", kp_x_, kp_y_);
+//     RCLCPP_INFO(this->get_logger(), 
+//                 "  Max Velocity: %.2f m/s", max_velocity_);
+//     RCLCPP_INFO(this->get_logger(), 
+//                 "========================================");
+//     RCLCPP_INFO(this->get_logger(), 
+//                 "Waiting for data...");
+// }
+
+// void TetherControlNode::declareParameters()
+// {
+//     this->declare_parameter("control_frequency", 10.0);
+//     this->declare_parameter("kp_x", 2.0);
+//     this->declare_parameter("kp_y", 2.0);
+//     this->declare_parameter("max_velocity", 1.0);
+// }
+
+// void TetherControlNode::relativePositionCallback(
+//     const geometry_msgs::msg::PointStamped::SharedPtr msg)
+// {
+//     current_relative_pos_ = *msg;
+    
+//     if (!relative_pos_received_) {
+//         RCLCPP_INFO(this->get_logger(), "✓ Relative position data received");
+//         relative_pos_received_ = true;
+//     }
+    
+//     // Lock target on first reception when robot2 data is also available
+//     if (!target_set_ && robot2_pose_received_) {
+//         target_rel_x_ = msg->point.x;
+//         target_rel_y_ = msg->point.y;
+//         target_set_ = true;
+        
+//         double distance = std::sqrt(target_rel_x_ * target_rel_x_ + 
+//                                    target_rel_y_ * target_rel_y_);
+        
+//         RCLCPP_INFO(this->get_logger(), 
+//                     "========================================");
+//         RCLCPP_INFO(this->get_logger(), 
+//                     "🎯 TARGET LOCKED");
+//         RCLCPP_INFO(this->get_logger(), 
+//                     "  Relative Position: [%.3f, %.3f] m", 
+//                     target_rel_x_, target_rel_y_);
+//         RCLCPP_INFO(this->get_logger(), 
+//                     "  Distance: %.3f m", distance);
+//         RCLCPP_INFO(this->get_logger(), 
+//                     "========================================");
+//         RCLCPP_INFO(this->get_logger(), 
+//                     "🚀 Control active!");
+//     }
+// }
+
+// void TetherControlNode::robot1PoseCallback(
+//     const geometry_msgs::msg::PoseStamped::SharedPtr msg)
+// {
+//     robot1_pose_ = *msg;
+    
+//     if (!robot1_pose_received_) {
+//         RCLCPP_INFO(this->get_logger(), 
+//                     "✓ Robot1 pose received at [%.2f, %.2f]",
+//                     msg->pose.position.x, msg->pose.position.y);
+//         robot1_pose_received_ = true;
+//     }
+// }
+
+// void TetherControlNode::robot2PoseCallback(
+//     const geometry_msgs::msg::PoseStamped::SharedPtr msg)
+// {
+//     robot2_pose_ = *msg;
+    
+//     if (!robot2_pose_received_) {
+//         RCLCPP_INFO(this->get_logger(), 
+//                     "✓ Robot2 pose received at [%.2f, %.2f]",
+//                     msg->pose.position.x, msg->pose.position.y);
+//         robot2_pose_received_ = true;
+//     }
+// }
+
+// void TetherControlNode::controlTimerCallback()
+// {
+//     // Status logging (every 5 seconds)
+//     static int status_count = 0;
+//     if (status_count++ % (int)(5 * control_frequency_) == 0) {
+//         if (!target_set_) {
+//             RCLCPP_INFO(this->get_logger(),
+//                         "Waiting... (rel_pos=%d, robot1=%d, robot2=%d)",
+//                         relative_pos_received_, 
+//                         robot1_pose_received_, 
+//                         robot2_pose_received_);
+//         }
+//     }
+    
+//     // Check if target is set
+//     if (!target_set_) {
+//         return;
+//     }
+    
+//     // Check if all data is available
+//     if (!relative_pos_received_ || !robot1_pose_received_ || !robot2_pose_received_) {
+//         RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
+//                              "Missing data! Cannot control.");
+//         return;
+//     }
+    
+//     // Calculate desired position for robot2
+//     // desired_pos = robot1_pos + target_relative_pos
+//     double desired_x = robot1_pose_.pose.position.x + target_rel_x_;
+//     double desired_y = robot1_pose_.pose.position.y + target_rel_y_;
+    
+//     // Calculate position error
+//     double error_x = desired_x - robot2_pose_.pose.position.x;
+//     double error_y = desired_y - robot2_pose_.pose.position.y;
+//     double error_magnitude = std::sqrt(error_x * error_x + error_y * error_y);
+    
+//     // Proportional control
+//     double vel_x = kp_x_ * error_x;
+//     double vel_y = kp_y_ * error_y;
+    
+//     // Limit velocity
+//     double vel_magnitude = std::sqrt(vel_x * vel_x + vel_y * vel_y);
+//     if (vel_magnitude > max_velocity_) {
+//         double scale = max_velocity_ / vel_magnitude;
+//         vel_x *= scale;
+//         vel_y *= scale;
+//     }
+    
+//     // Create and publish command
+//     geometry_msgs::msg::Twist cmd_vel;
+//     cmd_vel.linear.x = vel_x;
+//     cmd_vel.linear.y = vel_y;
+//     cmd_vel.linear.z = 0.0;
+//     cmd_vel.angular.x = 0.0;
+//     cmd_vel.angular.y = 0.0;
+//     cmd_vel.angular.z = 0.0;
+    
+//     cmd_vel_pub_->publish(cmd_vel);
+    
+//     // Debug output (every 2 seconds)
+//     static int debug_count = 0;
+//     if (debug_count++ % (int)(2 * control_frequency_) == 0) {
+//         double current_rel_x = current_relative_pos_.point.x;
+//         double current_rel_y = current_relative_pos_.point.y;
+//         double rel_error_x = current_rel_x - target_rel_x_;
+//         double rel_error_y = current_rel_y - target_rel_y_;
+//         double rel_error = std::sqrt(rel_error_x * rel_error_x + rel_error_y * rel_error_y);
+        
+//         RCLCPP_INFO(this->get_logger(),
+//                     "Rel Error: %.3f m [%.3f, %.3f] | Cmd: [%.2f, %.2f] m/s",
+//                     rel_error, rel_error_x, rel_error_y,
+//                     cmd_vel.linear.x, cmd_vel.linear.y);
+//     }
+// }
+
+// }  // namespace ff
+
+// int main(int argc, char ** argv)
+// {
+//     rclcpp::init(argc, argv);
+//     auto node = std::make_shared<ff::TetherControlNode>();
+//     rclcpp::spin(node);
+//     rclcpp::shutdown();
+//     return 0;
+// }
+
+
+
+
+
+// MIT License
+//
+// Copyright (c) 2024 Stanford Autonomous Systems Lab
+
 #include "ff_control/tether_ctrl.hpp"
 #include <chrono>
 #include <cmath>
@@ -254,6 +486,8 @@ TetherControlNode::TetherControlNode()
         std::bind(&TetherControlNode::relativePositionCallback, this, _1));
     
     // Subscribe to robot poses (both from mocap)
+    // robot1 = /robot (the one we CONTROL)
+    // robot2 = /robot2 (the one we FOLLOW)
     robot1_pose_sub_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
         "/robot/pose", qos,
         std::bind(&TetherControlNode::robot1PoseCallback, this, _1));
@@ -262,9 +496,9 @@ TetherControlNode::TetherControlNode()
         "/robot2/pose", qos,
         std::bind(&TetherControlNode::robot2PoseCallback, this, _1));
     
-    // Publish velocity commands
+    // Publish velocity commands to /robot (NOT /robot2)
     cmd_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>(
-        "/robot2/cmd_vel", 10);
+        "/robot/commands/velocity", 10);
     
     // Create control timer
     auto period = std::chrono::duration<double>(1.0 / control_frequency_);
@@ -276,6 +510,10 @@ TetherControlNode::TetherControlNode()
                 "========================================");
     RCLCPP_INFO(this->get_logger(), 
                 "Tether Control Node Started");
+    RCLCPP_INFO(this->get_logger(), 
+                "  Controlled Robot: /robot");
+    RCLCPP_INFO(this->get_logger(), 
+                "  Following: /robot2");
     RCLCPP_INFO(this->get_logger(), 
                 "  Control Rate: %.1f Hz", control_frequency_);
     RCLCPP_INFO(this->get_logger(), 
@@ -306,8 +544,12 @@ void TetherControlNode::relativePositionCallback(
         relative_pos_received_ = true;
     }
     
-    // Lock target on first reception when robot2 data is also available
-    if (!target_set_ && robot2_pose_received_) {
+    // Lock target on first reception when both robot data is available
+    if (!target_set_ && robot1_pose_received_ && robot2_pose_received_) {
+        // Target is the NEGATIVE of current relative position
+        // Because relative_pos = robot2 - robot1
+        // We want robot1 to maintain: robot2 - robot1 = target
+        // So: robot1_desired = robot2 - target
         target_rel_x_ = msg->point.x;
         target_rel_y_ = msg->point.y;
         target_set_ = true;
@@ -320,14 +562,16 @@ void TetherControlNode::relativePositionCallback(
         RCLCPP_INFO(this->get_logger(), 
                     "🎯 TARGET LOCKED");
         RCLCPP_INFO(this->get_logger(), 
-                    "  Relative Position: [%.3f, %.3f] m", 
+                    "  Target Relative Position: [%.3f, %.3f] m", 
                     target_rel_x_, target_rel_y_);
+        RCLCPP_INFO(this->get_logger(), 
+                    "  (robot2 - robot) = target");
         RCLCPP_INFO(this->get_logger(), 
                     "  Distance: %.3f m", distance);
         RCLCPP_INFO(this->get_logger(), 
                     "========================================");
         RCLCPP_INFO(this->get_logger(), 
-                    "🚀 Control active!");
+                    "🚀 Control active on /robot!");
     }
 }
 
@@ -338,7 +582,7 @@ void TetherControlNode::robot1PoseCallback(
     
     if (!robot1_pose_received_) {
         RCLCPP_INFO(this->get_logger(), 
-                    "✓ Robot1 pose received at [%.2f, %.2f]",
+                    "✓ /robot pose received at [%.2f, %.2f]",
                     msg->pose.position.x, msg->pose.position.y);
         robot1_pose_received_ = true;
     }
@@ -351,7 +595,7 @@ void TetherControlNode::robot2PoseCallback(
     
     if (!robot2_pose_received_) {
         RCLCPP_INFO(this->get_logger(), 
-                    "✓ Robot2 pose received at [%.2f, %.2f]",
+                    "✓ /robot2 pose received at [%.2f, %.2f]",
                     msg->pose.position.x, msg->pose.position.y);
         robot2_pose_received_ = true;
     }
@@ -364,7 +608,7 @@ void TetherControlNode::controlTimerCallback()
     if (status_count++ % (int)(5 * control_frequency_) == 0) {
         if (!target_set_) {
             RCLCPP_INFO(this->get_logger(),
-                        "Waiting... (rel_pos=%d, robot1=%d, robot2=%d)",
+                        "Waiting... (rel_pos=%d, robot=%d, robot2=%d)",
                         relative_pos_received_, 
                         robot1_pose_received_, 
                         robot2_pose_received_);
@@ -383,14 +627,15 @@ void TetherControlNode::controlTimerCallback()
         return;
     }
     
-    // Calculate desired position for robot2
-    // desired_pos = robot1_pos + target_relative_pos
-    double desired_x = robot1_pose_.pose.position.x + target_rel_x_;
-    double desired_y = robot1_pose_.pose.position.y + target_rel_y_;
+    // Calculate desired position for /robot
+    // We want: robot2 - robot = target_rel
+    // Therefore: robot_desired = robot2 - target_rel
+    double desired_x = robot2_pose_.pose.position.x - target_rel_x_;
+    double desired_y = robot2_pose_.pose.position.y - target_rel_y_;
     
-    // Calculate position error
-    double error_x = desired_x - robot2_pose_.pose.position.x;
-    double error_y = desired_y - robot2_pose_.pose.position.y;
+    // Calculate position error for /robot
+    double error_x = desired_x - robot1_pose_.pose.position.x;
+    double error_y = desired_y - robot1_pose_.pose.position.y;
     double error_magnitude = std::sqrt(error_x * error_x + error_y * error_y);
     
     // Proportional control
@@ -405,7 +650,7 @@ void TetherControlNode::controlTimerCallback()
         vel_y *= scale;
     }
     
-    // Create and publish command
+    // Create and publish command to /robot
     geometry_msgs::msg::Twist cmd_vel;
     cmd_vel.linear.x = vel_x;
     cmd_vel.linear.y = vel_y;
@@ -426,7 +671,7 @@ void TetherControlNode::controlTimerCallback()
         double rel_error = std::sqrt(rel_error_x * rel_error_x + rel_error_y * rel_error_y);
         
         RCLCPP_INFO(this->get_logger(),
-                    "Rel Error: %.3f m [%.3f, %.3f] | Cmd: [%.2f, %.2f] m/s",
+                    "Rel Error: %.3f m [%.3f, %.3f] | /robot Cmd: [%.2f, %.2f] m/s",
                     rel_error, rel_error_x, rel_error_y,
                     cmd_vel.linear.x, cmd_vel.linear.y);
     }
